@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Décodeur Vidéo - Détection de Fraude</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 30px;
+            border-radius: 15px;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border-left: 5px solid #dc3545;
+        }
+
+        .result.fraud {
+            background: #fff3cd;
+            border-left: 5px solid #ff9800;
+        }
+
+        .result h3 {
+            margin-bottom: 15px;
+        }
+
+        .big-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-value.error {
+            color: #dc3545;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .fraud-details {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .fraud-details h4 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .fraud-item {
+            padding: 10px;
+            border-left: 3px solid #dc3545;
+            background: #fff5f5;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info-box strong {
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Décodeur Vidéo Anti-Fraude</h1>
+        <p class="subtitle">Vérification d'intégrité par comparaison de hashs cryptographiques</p>
+
+        <!-- SECTION: VÉRIFICATION -->
+        <div class="section">
+            <h2>🛡️ Vérifier l'Intégrité </h2>
+            
+            <div class="info-box">
+                 Le système télécharge les frames depuis Supabase, 
+                recalcule leurs hashs et compare avec ceux stockés en base de données. 
+                <strong>Détecte toute modification !</strong>
+            </div>
+
+            <form id="verifyForm">
+                <div class="form-group">
+                    <label>Code de Session</label>
+                    <input type="text" id="sessionId" placeholder="Ex: session_1767539454657" required>
+                </div>
+
+                <button type="submit" id="verifyBtn">
+                    🔍 Vérifier l'Intégrité
+                </button>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Téléchargement et vérification des frames...</p>
+            </div>
+
+            <div id="result" class="result"></div>
+        </div>
+
+        <!-- SECTION: RECONSTRUCTION -->
+        <div class="section">
+            <h2>🎬 Reconstruire une Vidéo Vérifiée</h2>
+            
+            <form id="reconstructForm">
+                <div class="form-group">
+                    <label>Code de Session</label>
+                    <input type="text" id="reconstructSessionId" placeholder="Ex: session_1767539454657" required>
+                </div>
+
+                <button type="submit" id="reconstructBtn">
+                    🎬 Télécharger la Vidéo Authentifiée
+                </button>
+            </form>
+
+            <div id="reconstructLoading" class="loading">
+                <div class="spinner"></div>
+                <p>Reconstruction de la vidéo depuis les frames vérifiées...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3030';
+
+        // VÉRIFICATION
+        document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sessionId = document.getElementById('sessionId').value;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const verifyBtn = document.getElementById('verifyBtn');
+
+            loading.classList.add('show');
+            result.classList.remove('show');
+            verifyBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('sessionId', sessionId);
+
+                const response = await fetch(`${API_URL}/verify-video`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                console.log('Réponse du serveur:', data);
+
+                if (data.success) {
+                    showResult(data);
+                } else {
+                    throw new Error(data.error || 'Erreur de vérification');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                result.innerHTML = `
+                    <h3>❌ Erreur</h3>
+                    <p>${error.message}</p>
+                `;
+                result.className = 'result show error';
+            } finally {
+                loading.classList.remove('show');
+                verifyBtn.disabled = false;
+            }
+        });
+
+        // RECONSTRUCTION
+        document.getElementById('reconstructForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sessionId = document.getElementById('reconstructSessionId').value;
+            const loading = document.getElementById('reconstructLoading');
+            const reconstructBtn = document.getElementById('reconstructBtn');
+
+            loading.classList.add('show');
+            reconstructBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_URL}/reconstruct-video`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sessionId, fps: 2 })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Erreur de reconstruction');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `verified_${sessionId}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                alert('✅ Vidéo authentifiée téléchargée !');
+            } catch (error) {
+                alert(`❌ Erreur: ${error.message}`);
+            } finally {
+                loading.classList.remove('show');
+                reconstructBtn.disabled = false;
+            }
+        });
+
+        function showResult(data) {
+            const result = document.getElementById('result');
+            const isAuthentic = data.authentic;
+            const hasFraud = data.invalidFrames > 0;
+
+            // Déterminer le type de résultat
+            let resultClass = 'success';
+            let resultIcon = '✅';
+            let resultTitle = 'VIDÉO AUTHENTIQUE';
+
+            if (hasFraud) {
+                resultClass = 'fraud';
+                resultIcon = '⚠️';
+                resultTitle = 'FRAUDE DÉTECTÉE !';
+            } else if (!isAuthentic) {
+                resultClass = 'error';
+                resultIcon = '❌';
+                resultTitle = 'VIDÉO COMPROMISE';
+            }
+
+            result.className = `result show ${resultClass}`;
+
+            let fraudDetailsHTML = '';
+            if (hasFraud && data.modifiedFrames && data.modifiedFrames.length > 0) {
+                fraudDetailsHTML = `
+                    <div class="fraud-details">
+                        <h4>🚨 Frames Modifiées Détectées :</h4>
+                        ${data.modifiedFrames.map(frame => `
+                            <div class="fraud-item">
+                                <strong>Frame #${frame.index + 1}</strong><br>
+                                Hash stocké: ${frame.storedHash.substring(0, 32)}...<br>
+                                Hash recalculé: ${frame.recalculatedHash.substring(0, 32)}...<br>
+                                ⚠️ <strong style="color: #dc3545;">HASH MODIFIÉ !</strong>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            result.innerHTML = `
+                <h3>${resultIcon} ${resultTitle}</h3>
+                
+                <div class="big-number">${data.integrity.toFixed(2)}%</div>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">${data.validFrames}</div>
+                        <div class="stat-label">✅ Frames Valides</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value ${hasFraud ? 'error' : ''}">${data.invalidFrames}</div>
+                        <div class="stat-label">❌ Frames Modifiées</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${data.totalFrames}</div>
+                        <div class="stat-label">📊 Total</div>
+                    </div>
+                </div>
+
+                <p><strong>Session:</strong> ${data.sessionId}</p>
+                <p><strong>Verdict:</strong> ${data.verdict}</p>
+                <p><strong>Message:</strong> ${data.message}</p>
+
+                ${fraudDetailsHTML}
+
+                <p style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px;">
+                    <strong>💡 Comment ça marche :</strong><br>
+                    1️⃣ Téléchargement des frames depuis Supabase<br>
+                    2️⃣ Recalcul des hashs SHA-256 de chaque frame<br>
+                    3️⃣ Comparaison avec les hashs stockés en base<br>
+                    4️⃣ Détection de toute modification = FRAUDE
+                </p>
+            `;
+        }
+    </script>
+</body>
+</html>

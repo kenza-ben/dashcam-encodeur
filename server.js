@@ -434,6 +434,18 @@ function hashBuffer(buffer) {
 
 app.use(express.json());
 app.use(express.static("public"));
+// Routes pour les pages
+app.get('/', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+});
+
+app.get('/encodeur', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'encodeur.html'));
+});
+
+app.get('/decoder', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'decodeur.html'));
+});
 
 // ============================================
 // NETTOYAGE AUTOMATIQUE DES SESSIONS EXPIRÉES

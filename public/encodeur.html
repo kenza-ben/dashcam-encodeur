@@ -1,0 +1,1009 @@
+
+ <!DOCTYPE html>
+ <html lang="fr">
+ <head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Boîte Noire Automobile - Résistant aux coupures</title>
+ <style>
+   * { margin:0; padding:0; box-sizing:border-box; }
+   body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
+   .container { background:white; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-width:900px; width:100%; padding:30px; }
+   h1 { color:#1e3c72; text-align:center; margin-bottom:10px; font-size:2em; }
+   .subtitle { text-align:center; color:#666; margin-bottom:30px; }
+   .video-container { position:relative; background:#000; border-radius:10px; overflow:hidden; margin-bottom:20px; }
+   video { width:100%; height:auto; display:block; min-height:300px; }
+   .recording-indicator { position:absolute; top:20px; left:20px; background:rgba(255,0,0,0.9); color:white; padding:10px 20px; border-radius:25px; font-weight:bold; display:none; align-items:center; gap:10px; animation:pulse 1.5s infinite; z-index:10; }
+   .recording-indicator.active { display:flex; }
+   .rec-dot { width:12px; height:12px; background:white; border-radius:50%; animation:blink 1s infinite; }
+   @keyframes blink { 0%,50% { opacity:1 } 51%,100% { opacity:0.3 } }
+   @keyframes pulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.05) } }
+   .controls { display:flex; gap:15px; justify-content:center; margin-bottom:20px; flex-wrap:wrap; }
+   button { padding:15px 30px; font-size:16px; font-weight:bold; border:none; border-radius:10px; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; gap:8px; }
+   button:disabled { opacity:0.5; cursor:not-allowed; }
+   .btn-start { background:#4CAF50; color:white; }
+   .btn-start:hover:not(:disabled) { background:#45a049; transform:translateY(-2px); box-shadow:0 5px 15px rgba(76,175,80,0.4); }
+   .btn-stop { background:#f44336; color:white; }
+   .btn-stop:hover:not(:disabled) { background:#da190b; transform:translateY(-2px); box-shadow:0 5px 15px rgba(244,67,54,0.4); }
+   .btn-declare { background:#FF9800; color:white; animation:pulse-declare 2s infinite; }
+   .btn-declare:hover:not(:disabled) { background:#F57C00; transform:translateY(-2px); box-shadow:0 5px 15px rgba(255,152,0,0.4); }
+   @keyframes pulse-declare { 0%,100% { box-shadow:0 0 0 0 rgba(255,152,0,0.7) } 50% { box-shadow:0 0 0 10px rgba(255,152,0,0) } }
+   .expiration-timer { display:none; background:#fff3cd; border:2px solid #ffc107; border-radius:10px; padding:15px; margin-bottom:20px; text-align:center; }
+   .expiration-timer h3 { margin:0 0 10px 0; color:#856404; }
+   .timer-display { font-size:32px; font-weight:bold; color:#856404; }
+   .expiration-timer.warning { background:#f8d7da; border-color:#f44336; }
+   .expiration-timer.warning .timer-display { color:#721c24; }
+   .btn-declare { background:#FF9800; color:white; animation:pulse-declare 2s infinite; }
+   .btn-declare:hover:not(:disabled) { background:#F57C00; transform:translateY(-2px); box-shadow:0 5px 15px rgba(255,152,0,0.4); }
+   @keyframes pulse-declare { 0%,100% { box-shadow:0 0 0 0 rgba(255,152,0,0.7) } 50% { box-shadow:0 0 0 10px rgba(255,152,0,0) } }
+   .stats { background:#f5f5f5; border-radius:10px; padding:20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px; margin-bottom:20px; }
+   .stat-item { text-align:center; }
+   .stat-value { font-size:24px; font-weight:bold; color:#1e3c72; }
+   .stat-label { font-size:12px; color:#666; margin-top:5px; }
+   .network-status { background:#fff3cd; border:2px solid #ffc107; border-radius:10px; padding:15px; margin-bottom:20px; display:none; }
+   .network-status.offline { display:block; background:#f8d7da; border-color:#f44336; }
+   .network-status.syncing { display:block; background:#d1ecf1; border-color:#0dcaf0; }
+   .network-status.online { display:none; }
+   .network-status.expiring { display:block; background:#fff3cd; border-color:#ffc107; }
+   .network-status.expired { display:block; background:#f8d7da; border-color:#f44336; }
+   .network-icon { font-size:24px; margin-right:10px; }
+   .log { margin-top:20px; background:#f9f9f9; border-radius:10px; padding:15px; max-height:200px; overflow-y:auto; font-family:monospace; font-size:12px; }
+   .log-entry { padding:5px; border-bottom:1px solid #eee; }
+   .log-entry:last-child { border-bottom:none; }
+   .log-success { color:#4CAF50; }
+   .log-error { color:#f44336; }
+   .log-info { color:#2196F3; }
+   .log-warning { color:#FF9800; }
+   .preview { margin-top:20px; text-align:center; }
+   .connection-status { position:absolute; top:20px; right:20px; padding:8px 16px; border-radius:20px; font-size:12px; font-weight:bold; z-index:10; }
+   .connection-status.online { background:#4CAF50; color:white; }
+   .connection-status.offline { background:#f44336; color:white; }
+   .connection-status.syncing { background:#2196F3; color:white; animation:pulse 1s infinite; }
+ </style>
+ </head>
+ <body>
+ <div class="container">
+   <h1>🚗 Boîte Noire Automobile</h1>
+   <p class="subtitle">Enregistrement vidéo en temps réel avec backup cloud et gestion hors-ligne</p>
+ 
+   <div class="network-status" id="networkStatus">
+     <span class="network-icon">⚠️</span>
+     <strong id="networkStatusText">Vérification du réseau...</strong>
+   </div>
+ 
+   <div class="expiration-timer" id="expirationTimer">
+     <h3>⏱️ Temps restant pour déclarer un sinistre</h3>
+     <div class="timer-display" id="timerDisplay">--:--</div>
+     <p style="margin:10px 0 0 0; font-size:14px;">Après ce délai, les données seront automatiquement supprimées</p>
+   </div>
+ 
+   <div class="video-container">
+     <video id="video" autoplay muted playsinline></video>
+     <div class="recording-indicator" id="recordingIndicator">
+       <div class="rec-dot"></div><span>ENREGISTREMENT</span>
+     </div>
+     <div class="connection-status offline" id="connectionStatus">⚠️ Serveur</div>
+   </div>
+ 
+   <div class="controls">
+     <button class="btn-start" id="startBtn">▶️ Démarrer l'enregistrement</button>
+     <button class="btn-stop" id="stopBtn" disabled>⏹️ Arrêter l'enregistrement</button>
+     <button class="btn-sync" id="syncBtn" disabled>🔄 Synchroniser (<span id="pendingCount">0</span>)</button>
+     <button class="btn-declare" id="declareBtn" style="display:none;">🚨 Déclarer un sinistre</button>
+   </div>
+ 
+   <div id="expirationTimer" style="display:none; background:#fff3cd; border:2px solid #ffc107; border-radius:10px; padding:15px; margin-bottom:20px; text-align:center;">
+     <h3 style="margin:0 0 10px 0; color:#856404;">⏱️ Temps restant pour déclarer</h3>
+     <div style="font-size:32px; font-weight:bold; color:#856404;" id="timerDisplay">--:--</div>
+     <p style="margin:10px 0 0 0; font-size:14px; color:#856404;">Après ce délai, les données seront automatiquement supprimées</p>
+   </div>
+ 
+   <div class="stats">
+     <div class="stat-item"><div class="stat-value" id="framesCount">0</div><div class="stat-label">Frames envoyées</div></div>
+     <div class="stat-item"><div class="stat-value" id="pendingFrames">0</div><div class="stat-label">En attente</div></div>
+     <div class="stat-item"><div class="stat-value" id="duration">00:00</div><div class="stat-label">Durée</div></div>
+     <div class="stat-item"><div class="stat-value" id="fps">0</div><div class="stat-label">FPS</div></div>
+     <div class="stat-item"><div class="stat-value" id="status">🔴 Arrêté</div><div class="stat-label">État</div></div>
+   </div>
+ 
+   <div class="log" id="log">
+     <div class="log-entry log-info">Vérification de la connexion au serveur...</div>
+   </div>
+ 
+   <div class="preview">
+     <h3>Prévisualisation vidéo :</h3>
+     <video id="videoPreview" controls style="width:100%; max-height:400px; display:none;"></video>
+   </div>
+ </div>
+ 
+ <script>
+ // ============================================
+ // 1. GESTION DE LA BASE DE DONNÉES INDEXEDDB
+ // ============================================
+ 
+ class OfflineStorage {
+   constructor() {
+     this.dbName = 'BoiteNoireDB';
+     this.storeName = 'pendingFrames';
+     this.db = null;
+   }
+ 
+   async init() {
+     return new Promise((resolve, reject) => {
+       const request = indexedDB.open(this.dbName, 1);
+ 
+       request.onerror = () => reject(request.error);
+       request.onsuccess = () => {
+         this.db = request.result;
+         resolve();
+       };
+ 
+       request.onupgradeneeded = (event) => {
+         const db = event.target.result;
+         if (!db.objectStoreNames.contains(this.storeName)) {
+           const objectStore = db.createObjectStore(this.storeName, { keyPath: 'id', autoIncrement: true });
+           objectStore.createIndex('sessionId', 'sessionId', { unique: false });
+           objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+         }
+       };
+     });
+   }
+ 
+   async saveFrame(frameData) {
+     return new Promise((resolve, reject) => {
+       const transaction = this.db.transaction([this.storeName], 'readwrite');
+       const store = transaction.objectStore(this.storeName);
+       const request = store.add(frameData);
+       request.onsuccess = () => resolve(request.result);
+       request.onerror = () => reject(request.error);
+     });
+   }
+ 
+   async getAllFrames() {
+     return new Promise((resolve, reject) => {
+       const transaction = this.db.transaction([this.storeName], 'readonly');
+       const store = transaction.objectStore(this.storeName);
+       const request = store.getAll();
+       request.onsuccess = () => resolve(request.result);
+       request.onerror = () => reject(request.error);
+     });
+   }
+ 
+   async deleteFrame(id) {
+     return new Promise((resolve, reject) => {
+       const transaction = this.db.transaction([this.storeName], 'readwrite');
+       const store = transaction.objectStore(this.storeName);
+       const request = store.delete(id);
+       request.onsuccess = () => resolve();
+       request.onerror = () => reject(request.error);
+     });
+   }
+ 
+   async getCount() {
+     return new Promise((resolve, reject) => {
+       const transaction = this.db.transaction([this.storeName], 'readonly');
+       const store = transaction.objectStore(this.storeName);
+       const request = store.count();
+       request.onsuccess = () => resolve(request.result);
+       request.onerror = () => reject(request.error);
+     });
+   }
+ }
+ 
+ // ============================================
+ // 2. VARIABLES GLOBALES
+ // ============================================
+ 
+ const video = document.getElementById('video');
+ const startBtn = document.getElementById('startBtn');
+ const stopBtn = document.getElementById('stopBtn');
+ const syncBtn = document.getElementById('syncBtn');
+ const declareBtn = document.getElementById('declareBtn');
+ const recordingIndicator = document.getElementById('recordingIndicator');
+ const framesCountEl = document.getElementById('framesCount');
+ const pendingFramesEl = document.getElementById('pendingFrames');
+ const pendingCountEl = document.getElementById('pendingCount');
+ const durationEl = document.getElementById('duration');
+ const fpsEl = document.getElementById('fps');
+ const statusEl = document.getElementById('status');
+ const logEl = document.getElementById('log');
+ const videoPreview = document.getElementById('videoPreview');
+ const connectionStatus = document.getElementById('connectionStatus');
+ const networkStatus = document.getElementById('networkStatus');
+ const networkStatusText = document.getElementById('networkStatusText');
+ const expirationTimer = document.getElementById('expirationTimer');
+ const timerDisplay = document.getElementById('timerDisplay');
+ 
+ let isRecording = false;
+ let framesCount = 0;
+ let intervalId = null;
+ let startTime = null;
+ let sessionId = null;
+ let stream = null;
+ let mediaRecorder;
+ let recordedChunks = [];
+ let serverOnline = false;
+ let isSyncing = false;
+ let expirationTimerId = null;
+ let sessionExpiresAt = null;
+ let sessionDeclared = false;
+ 
+ const offlineStorage = new OfflineStorage();
+ 
+ // ============================================
+ // 3. FONCTIONS UTILITAIRES
+ // ============================================
+ 
+ function addLog(message, type='info'){
+   const entry = document.createElement('div');
+   entry.className = `log-entry log-${type}`;
+   const timestamp = new Date().toLocaleTimeString();
+   entry.textContent = `[${timestamp}] ${message}`;
+   logEl.insertBefore(entry, logEl.firstChild);
+ }
+ 
+ function updateStats(){
+   if(!startTime) return;
+   const elapsed = Math.floor((Date.now()-startTime)/1000);
+   const minutes = Math.floor(elapsed/60).toString().padStart(2,'0');
+   const seconds = (elapsed%60).toString().padStart(2,'0');
+   durationEl.textContent = `${minutes}:${seconds}`;
+   const currentFps = elapsed>0 ? (framesCount/elapsed).toFixed(1) : 0;
+   fpsEl.textContent = currentFps;
+ }
+ 
+ async function updatePendingCount() {
+   const count = await offlineStorage.getCount();
+   pendingFramesEl.textContent = count;
+   pendingCountEl.textContent = count;
+   syncBtn.disabled = count === 0 || isSyncing;
+ }
+ 
+ function updateNetworkStatus(online, syncing = false) {
+   serverOnline = online;
+   
+   if (syncing) {
+     connectionStatus.textContent = '🔄 Sync...';
+     connectionStatus.className = 'connection-status syncing';
+     networkStatus.className = 'network-status syncing';
+     networkStatusText.textContent = 'Synchronisation en cours...';
+   } else if (online) {
+     connectionStatus.textContent = '✅ Connecté';
+     connectionStatus.className = 'connection-status online';
+     networkStatus.className = 'network-status online';
+   } else {
+     connectionStatus.textContent = '⚠️ Hors ligne';
+     connectionStatus.className = 'connection-status offline';
+     networkStatus.className = 'network-status offline';
+     networkStatusText.textContent = 'Mode hors-ligne : les frames sont stockées localement et seront envoyées à la reconnexion.';
+   }
+ }
+ 
+ // ============================================
+ // 4. GESTION DE LA CONNEXION RÉSEAU
+ // ============================================
+ 
+ async function checkServerConnection(){
+   try {
+     const response = await fetch('/health', { 
+       method: 'GET',
+       signal: AbortSignal.timeout(5000)
+     });
+     if(response.ok){
+       updateNetworkStatus(true);
+       if (!isSyncing) {
+         addLog('Serveur connecté', 'success');
+       }
+       return true;
+     }
+   } catch(err) {
+     updateNetworkStatus(false);
+     if (!serverOnline) {
+       addLog('Mode hors-ligne activé - Stockage local', 'warning');
+     }
+     return false;
+   }
+ }
+ 
+ // ============================================
+ // 5. GESTION DE LA CAMÉRA
+ // ============================================
+ 
+ async function initCamera(){
+   try{
+     stream = await navigator.mediaDevices.getUserMedia({ 
+       video: { 
+         width:{ideal:1280}, 
+         height:{ideal:720}, 
+         frameRate:{ideal:30} 
+       },
+       audio: false
+     });
+     video.srcObject = stream;
+     addLog('Caméra initialisée', 'success');
+     return true;
+   }catch(err){
+     addLog(`Erreur accès caméra: ${err.message}`, 'error');
+     alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+     return false;
+   }
+ }
+ 
+ async function generateHash(blob){
+   const buffer = await blob.arrayBuffer();
+   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+   const hashArray = Array.from(new Uint8Array(hashBuffer));
+   return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+ }
+ 
+ // ============================================
+ // 6. CAPTURE ET UPLOAD (AVEC GESTION HORS-LIGNE)
+ // ============================================
+ 
+ async function captureAndUpload(){
+   if(!isRecording) return;
+   
+   const canvas = document.createElement('canvas');
+   canvas.width = video.videoWidth;
+   canvas.height = video.videoHeight;
+   
+   if(canvas.width===0 || canvas.height===0) {
+     return;
+   }
+   
+   canvas.getContext('2d').drawImage(video,0,0);
+ 
+   try{
+     const blob = await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.85));
+     const hash = await generateHash(blob);
+     const timestamp = Date.now();
+ 
+     const frameData = {
+       sessionId: sessionId,
+       hash: hash,
+       timestamp: timestamp,
+       blob: blob,
+       blobString: await blobToBase64(blob) // Pour stockage IndexedDB
+     };
+ 
+     // Tentative d'envoi direct si en ligne
+     if (serverOnline) {
+       const result = await uploadFrameToServer(frameData);
+       if (result === true) {
+         framesCount++;
+         framesCountEl.textContent = framesCount;
+         updateStats();
+         if(framesCount % 10 === 0) addLog(`${framesCount} frames uploadées`, 'success');
+         return;
+       } else if (result === 'duplicate') {
+         // Doublon détecté, ne pas stocker localement
+         console.warn('Frame en doublon détectée, ignorée');
+         return;
+       } else {
+         // Si l'upload échoue, marquer comme hors ligne et stocker
+         console.warn('Upload échoué, passage en mode hors ligne');
+         updateNetworkStatus(false);
+       }
+     }
+ 
+     // Si hors ligne ou échec : stockage local
+     console.log('Stockage frame en local:', hash.substring(0, 8));
+     await offlineStorage.saveFrame(frameData);
+     await updatePendingCount();
+     if (pendingFramesEl.textContent === '1') {
+       addLog('Passage en mode hors-ligne', 'warning');
+     }
+     
+   }catch(err){
+     console.error('Erreur dans captureAndUpload:', err);
+     addLog(`Erreur capture: ${err.message}`,'error');
+   }
+ }
+ 
+ function blobToBase64(blob) {
+   return new Promise((resolve, reject) => {
+     const reader = new FileReader();
+     reader.onloadend = () => resolve(reader.result);
+     reader.onerror = reject;
+     reader.readAsDataURL(blob);
+   });
+ }
+ 
+ function base64ToBlob(base64) {
+   const parts = base64.split(',');
+   const contentType = parts[0].match(/:(.*?);/)[1];
+   const raw = atob(parts[1]);
+   const array = new Uint8Array(raw.length);
+   for (let i = 0; i < raw.length; i++) {
+     array[i] = raw.charCodeAt(i);
+   }
+   return new Blob([array], { type: contentType });
+ }
+ 
+ async function uploadFrameToServer(frameData) {
+   try {
+     const formData = new FormData();
+     
+     // Reconvertir le Base64 en Blob si nécessaire
+     let blob;
+     if (frameData.blobString) {
+       blob = base64ToBlob(frameData.blobString);
+     } else if (frameData.blob) {
+       blob = frameData.blob;
+     } else {
+       throw new Error('Pas de données blob disponibles');
+     }
+     
+     formData.append('frame', blob, `frame_${frameData.timestamp}.jpg`);
+     formData.append('sessionId', frameData.sessionId);
+     formData.append('hash', frameData.hash);
+     formData.append('timestamp', String(frameData.timestamp));
+ 
+     const res = await fetch('/upload',{ 
+       method:'POST', 
+       body:formData,
+       signal: AbortSignal.timeout(15000)
+     });
+     
+     if(!res.ok) {
+       const errorData = await res.json().catch(() => ({ error: 'Erreur inconnue' }));
+       
+       // Si la ressource existe déjà (409), on considère ça comme un succès
+       if (res.status === 500 && errorData.details?.statusCode === '409') {
+         console.log(`Frame déjà uploadée (${frameData.hash.substring(0, 8)}), ignorée`);
+         return 'duplicate'; // Retourne 'duplicate' au lieu de true
+       }
+       
+       console.error(`Erreur ${res.status}:`, errorData);
+       throw new Error(`HTTP ${res.status}: ${JSON.stringify(errorData)}`);
+     }
+ 
+     return true;
+     
+   }catch(err){
+     console.error('Erreur uploadFrameToServer:', err);
+     return false;
+   }
+ }
+ 
+ // ============================================
+ // 7. GESTION EXPIRATION ET DÉCLARATION
+ // ============================================
+ 
+ function startExpirationTimer(expiresAt) {
+   if (!expiresAt) return;
+   
+   sessionExpiresAt = new Date(expiresAt);
+   expirationTimer.style.display = 'block';
+   declareBtn.style.display = 'inline-flex';
+   
+   addLog(`⏱️ Expiration: ${sessionExpiresAt.toLocaleTimeString('fr-FR')}`, 'warning');
+   
+   if (expirationIntervalId) {
+     clearInterval(expirationIntervalId);
+   }
+   
+   expirationIntervalId = setInterval(updateExpirationDisplay, 1000);
+   updateExpirationDisplay();
+ }
+ 
+ function updateExpirationDisplay() {
+   if (!sessionExpiresAt || sessionDeclared) {
+     stopExpirationTimer();
+     return;
+   }
+   
+   const now = new Date();
+   const remaining = sessionExpiresAt - now;
+   
+   if (remaining <= 0) {
+     timerDisplay.textContent = '⚠️ EXPIRÉ';
+     expirationTimer.classList.add('warning');
+     addLog('❌ Session expirée - Données supprimées', 'error');
+     stopExpirationTimer();
+     cleanupLocalData();
+     return;
+   }
+   
+   const minutes = Math.floor(remaining / 1000 / 60);
+   const seconds = Math.floor((remaining / 1000) % 60);
+   timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+   
+   if (minutes < 10) {
+     expirationTimer.classList.add('warning');
+   }
+ }
+ 
+ function stopExpirationTimer() {
+   if (expirationIntervalId) {
+     clearInterval(expirationIntervalId);
+     expirationIntervalId = null;
+   }
+ }
+ 
+ async function declareIncident() {
+   if (!sessionId || sessionDeclared) {
+     addLog('Aucune session active', 'warning');
+     return;
+   }
+   
+   const description = prompt('Description du sinistre (optionnel):');
+   if (description === null) return;
+   
+   try {
+     addLog('🚨 Déclaration en cours...', 'info');
+     
+     const res = await fetch('/declare-incident', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         sessionId: sessionId,
+         description: description || ''
+       })
+     });
+     
+     const data = await res.json();
+     
+     if (!res.ok) {
+       if (res.status === 410) {
+         addLog('❌ Session expirée', 'error');
+         cleanupLocalData();
+       } else {
+         throw new Error(data.error || 'Erreur serveur');
+       }
+       return;
+     }
+     
+     sessionDeclared = true;
+     stopExpirationTimer();
+     expirationTimer.style.display = 'none';
+     declareBtn.disabled = true;
+     declareBtn.textContent = '✅ Déclaré';
+     
+     addLog('✅ Sinistre déclaré - Données préservées', 'success');
+     alert('✅ Sinistre déclaré!\n\nLes données sont préservées définitivement.');
+     
+   } catch (err) {
+     addLog(`Erreur: ${err.message}`, 'error');
+     alert(`Erreur: ${err.message}`);
+   }
+ }
+ 
+ async function cleanupLocalData() {
+   addLog('🧹 Nettoyage local...', 'info');
+   
+   try {
+     await indexedDB.deleteDatabase('BoiteNoireDB');
+     addLog('✓ Base locale supprimée', 'info');
+   } catch (err) {
+     console.error('Erreur:', err);
+   }
+   
+   videoPreview.style.display = 'none';
+   videoPreview.src = '';
+   framesCount = 0;
+   framesCountEl.textContent = '0';
+   await updatePendingCount();
+   
+   addLog('✓ Nettoyage terminé', 'success');
+ }
+ 
+ // ============================================
+ // 8. SYNCHRONISATION
+ // ============================================
+ 
+ async function synchronizePendingFrames() {
+   if (isSyncing) {
+     addLog('Synchronisation déjà en cours', 'warning');
+     return;
+   }
+ 
+   // Vérifier d'abord la connexion
+   const online = await checkServerConnection();
+   if (!online) {
+     addLog('Impossible de synchroniser : serveur hors ligne', 'error');
+     return;
+   }
+ 
+   const pending = await offlineStorage.getCount();
+   if (pending === 0) {
+     addLog('Aucune frame en attente', 'info');
+     return;
+   }
+ 
+   isSyncing = true;
+   updateNetworkStatus(true, true);
+   syncBtn.disabled = true;
+   addLog(`Début de synchronisation de ${pending} frames...`, 'info');
+ 
+   const frames = await offlineStorage.getAllFrames();
+   let successCount = 0;
+   let duplicateCount = 0;
+   let failCount = 0;
+ 
+   // Trier les frames par timestamp pour respecter l'ordre chronologique
+   frames.sort((a, b) => a.timestamp - b.timestamp);
+ 
+   for (let i = 0; i < frames.length; i++) {
+     const frame = frames[i];
+     
+     console.log(`Traitement frame ${i + 1}/${frames.length}:`, frame.hash.substring(0, 8));
+     
+     const result = await uploadFrameToServer(frame);
+     
+     if (result === true) {
+       // Succès : supprimer de IndexedDB
+       await offlineStorage.deleteFrame(frame.id);
+       successCount++;
+       framesCount++;
+       framesCountEl.textContent = framesCount;
+       await updatePendingCount();
+     } else if (result === 'duplicate') {
+       // Doublon : supprimer aussi de IndexedDB (déjà uploadée)
+       await offlineStorage.deleteFrame(frame.id);
+       duplicateCount++;
+       await updatePendingCount();
+     } else {
+       // Échec : garder dans IndexedDB
+       failCount++;
+       addLog(`❌ Échec frame ${frame.hash.substring(0, 8)}`, 'error');
+     }
+ 
+     // Petite pause pour ne pas surcharger le serveur
+     await new Promise(resolve => setTimeout(resolve, 200));
+   }
+ 
+   isSyncing = false;
+   updateNetworkStatus(true, false);
+   
+   // Messages de résumé
+   if (successCount > 0) {
+     addLog(`✅ ${successCount} nouvelles frames synchronisées`, 'success');
+   }
+   if (duplicateCount > 0) {
+     addLog(`ℹ️ ${duplicateCount} frames déjà présentes (ignorées)`, 'info');
+   }
+   if (failCount > 0) {
+     addLog(`⚠️ ${failCount} frames ont échoué`, 'warning');
+   }
+ 
+   await updatePendingCount();
+   
+   // Si tout est OK (même avec des doublons)
+   if (failCount === 0 && (successCount > 0 || duplicateCount > 0)) {
+     addLog('🎉 Synchronisation terminée !', 'success');
+   }
+ }
+ 
+ // ============================================
+ // 7. GESTION DE L'EXPIRATION ET DÉCLARATION
+ // ============================================
+ 
+ function startExpirationTimer(expiresAt) {
+   sessionExpiresAt = new Date(expiresAt);
+   expirationTimer.style.display = 'block';
+   declareBtn.style.display = 'inline-flex';
+   
+   addLog(`⏱️ Session expire à ${sessionExpiresAt.toLocaleTimeString()}`, 'warning');
+   
+   if (expirationTimerId) {
+     clearInterval(expirationTimerId);
+   }
+   
+   expirationTimerId = setInterval(updateExpirationDisplay, 1000);
+   updateExpirationDisplay();
+ }
+ 
+ function updateExpirationDisplay() {
+   if (!sessionExpiresAt || sessionDeclared) {
+     stopExpirationTimer();
+     return;
+   }
+   
+   const now = new Date();
+   const remaining = sessionExpiresAt - now;
+   
+   if (remaining <= 0) {
+     // Session expirée !
+     timerDisplay.textContent = '⚠️ EXPIRÉ';
+     timerDisplay.style.color = '#dc3545';
+     expirationTimer.style.background = '#f8d7da';
+     expirationTimer.style.borderColor = '#f44336';
+     addLog('❌ Session expirée - Données supprimées du serveur', 'error');
+     stopExpirationTimer();
+     
+     // Nettoyer les données locales
+     cleanupLocalData();
+     return;
+   }
+   
+   const minutes = Math.floor(remaining / 1000 / 60);
+   const seconds = Math.floor((remaining / 1000) % 60);
+   timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+   
+   // Alerte si moins de 10 minutes
+   if (minutes < 10) {
+     timerDisplay.style.color = '#dc3545';
+     expirationTimer.style.background = '#f8d7da';
+   }
+ }
+ 
+ function stopExpirationTimer() {
+   if (expirationTimerId) {
+     clearInterval(expirationTimerId);
+     expirationTimerId = null;
+   }
+ }
+ 
+ async function declareIncident() {
+   if (!sessionId || sessionDeclared) {
+     addLog('Aucune session active', 'warning');
+     return;
+   }
+   
+   const description = prompt('Description du sinistre (optionnel):');
+   
+   if (description === null) return; // Annulé
+   
+   try {
+     addLog('🚨 Déclaration du sinistre en cours...', 'info');
+     
+     const response = await fetch('/declare-incident', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         sessionId: sessionId,
+         description: description || ''
+       })
+     });
+     
+     const data = await response.json();
+     
+     if (!response.ok) {
+       if (response.status === 410) {
+         addLog('❌ Session déjà expirée, données supprimées', 'error');
+         cleanupLocalData();
+       } else {
+         throw new Error(data.error || 'Erreur serveur');
+       }
+       return;
+     }
+     
+     sessionDeclared = true;
+     stopExpirationTimer();
+     expirationTimer.style.display = 'none';
+     declareBtn.disabled = true;
+     declareBtn.textContent = '✅ Sinistre déclaré';
+     
+     addLog('✅ Sinistre déclaré - Données préservées définitivement', 'success');
+     alert('✅ Sinistre déclaré avec succès!\n\nLes données vidéo sont maintenant préservées et ne seront plus supprimées automatiquement.');
+     
+   } catch (err) {
+     addLog(`Erreur déclaration: ${err.message}`, 'error');
+     alert(`Erreur lors de la déclaration: ${err.message}`);
+   }
+ }
+ 
+ async function cleanupLocalData() {
+   addLog('🧹 Nettoyage des données locales...', 'info');
+   
+   // Supprimer IndexedDB
+   try {
+     await indexedDB.deleteDatabase('BoiteNoireDB');
+     addLog('✓ Base de données locale supprimée', 'info');
+   } catch (err) {
+     console.error('Erreur suppression DB:', err);
+   }
+   
+   // Réinitialiser l'interface
+   videoPreview.style.display = 'none';
+   videoPreview.src = '';
+   framesCount = 0;
+   framesCountEl.textContent = '0';
+   await updatePendingCount();
+   
+   addLog('✓ Données locales nettoyées', 'success');
+ }
+ 
+ // ============================================
+ // 8. ENREGISTREMENT (MODIFIÉ)
+ // ============================================
+ 
+ async function startRecording(){
+   const serverReady = await checkServerConnection();
+   
+   if (!serverReady) {
+     const confirm = window.confirm(
+       'Le serveur n\'est pas disponible.\n\n' +
+       'Voulez-vous continuer en MODE HORS-LIGNE ?\n' +
+       'Les frames seront stockées localement et synchronisées plus tard.'
+     );
+     if (!confirm) return;
+   }
+ 
+   const ready = stream || await initCamera();
+   if(!ready) return;
+ 
+   isRecording = true;
+   framesCount = 0;
+   startTime = Date.now();
+   sessionId = `session_${Date.now()}`;
+ 
+   startBtn.disabled = true;
+   stopBtn.disabled = false;
+   recordingIndicator.classList.add('active');
+   statusEl.textContent = '🟢 Actif';
+   addLog(`Enregistrement démarré - Session: ${sessionId}`, 'success');
+ 
+   intervalId = setInterval(captureAndUpload,500);
+ 
+   recordedChunks = [];
+   try {
+     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+       ? 'video/webm;codecs=vp9' 
+       : 'video/webm';
+     
+     mediaRecorder = new MediaRecorder(stream, { mimeType });
+     mediaRecorder.ondataavailable = e => {
+       if(e.data.size>0) recordedChunks.push(e.data);
+     };
+     mediaRecorder.start(1000);
+   } catch(err) {
+     addLog(`Erreur MediaRecorder: ${err.message}`, 'error');
+   }
+ }
+ 
+ async function stopRecording(){
+   isRecording = false;
+   clearInterval(intervalId);
+ 
+   startBtn.disabled = false;
+   stopBtn.disabled = true;
+   recordingIndicator.classList.remove('active');
+   statusEl.textContent = '🔴 Arrêté';
+   
+   const pending = await offlineStorage.getCount();
+   addLog(`Enregistrement arrêté - ${framesCount} frames envoyées, ${pending} en attente`, 'info');
+ 
+   if(!mediaRecorder) return;
+ 
+   return new Promise(resolve => {
+     mediaRecorder.onstop = async () => {
+       const blob = new Blob(recordedChunks, { type: 'video/webm' });
+       const url = URL.createObjectURL(blob);
+ 
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = `video_${sessionId}.webm`;
+       document.body.appendChild(a);
+       a.click();
+       a.remove();
+       addLog(`Vidéo téléchargée localement (${(blob.size/1024/1024).toFixed(2)} MB)`, 'success');
+ 
+       videoPreview.src = url;
+       videoPreview.style.display = 'block';
+       videoPreview.load();
+ 
+       if(serverOnline) {
+         try{
+           addLog('Upload de la vidéo complète...', 'info');
+           const formData = new FormData();
+           formData.append('fullVideo', blob, `video_${sessionId}.webm`);
+           formData.append('sessionId', sessionId);
+           
+           const res = await fetch('/upload-full-video', { 
+             method:'POST', 
+             body:formData,
+             signal: AbortSignal.timeout(60000)
+           });
+           
+           if(res.ok) {
+             const data = await res.json();
+             addLog(`Vidéo complète uploadée sur le serveur`, 'success');
+             
+             // Démarrer le compte à rebours si une expiration est définie
+             if (data.expiresAt) {
+               startExpirationTimer(data.expiresAt);
+             }
+           }
+         }catch(err){ 
+           addLog(`Erreur upload vidéo: ${err.message}`, 'error'); 
+         }
+       }
+ 
+       // Terminer la session côté serveur
+       try {
+         await fetch('/end-session', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ sessionId })
+         });
+       } catch (err) {
+         console.error('Erreur end-session:', err);
+       }
+ 
+       resolve();
+     };
+     
+     if(mediaRecorder.state !== 'inactive') {
+       mediaRecorder.stop();
+     }
+   });
+ }
+ 
+ // ============================================
+ // 10. EVENT LISTENERS
+ // ============================================
+ 
+ startBtn.addEventListener('click', startRecording);
+ stopBtn.addEventListener('click', stopRecording);
+ syncBtn.addEventListener('click', synchronizePendingFrames);
+ declareBtn.addEventListener('click', declareIncident);
+ declareBtn.addEventListener('click', declareIncident);
+ 
+ // Détection automatique de reconnexion
+ window.addEventListener('online', async () => {
+   addLog('Connexion réseau rétablie (événement navigateur)', 'success');
+   await checkServerConnection();
+   const pending = await offlineStorage.getCount();
+   if (pending > 0) {
+     addLog(`${pending} frames en attente de synchronisation`, 'info');
+     // Auto-sync après reconnexion
+     setTimeout(() => synchronizePendingFrames(), 2000);
+   }
+ });
+ 
+ window.addEventListener('offline', () => {
+   addLog('Connexion réseau perdue (événement navigateur)', 'warning');
+   updateNetworkStatus(false);
+ });
+ 
+ // Détection de reconnexion améliorée via polling
+ let wasOffline = false;
+ setInterval(async () => {
+   if (!isSyncing && !isRecording) {
+     const isOnline = await checkServerConnection();
+     
+     // Si on vient de se reconnecter
+     if (isOnline && wasOffline) {
+       addLog('Reconnexion détectée !', 'success');
+       const pending = await offlineStorage.getCount();
+       if (pending > 0) {
+         addLog(`Synchronisation automatique de ${pending} frames...`, 'info');
+         setTimeout(() => synchronizePendingFrames(), 1000);
+       }
+     }
+     
+     wasOffline = !isOnline;
+   }
+ }, 5000); // Vérifier toutes les 5 secondes
+ 
+ // ============================================
+ // 11. INITIALISATION
+ // ============================================
+ 
+ (async () => {
+   try {
+     await offlineStorage.init();
+     addLog('Stockage hors-ligne initialisé', 'success');
+     await updatePendingCount();
+     
+     const isOnline = await checkServerConnection();
+     
+     // Si on a des frames en attente au démarrage et qu'on est en ligne
+     const pendingAtStart = await offlineStorage.getCount();
+     if (pendingAtStart > 0) {
+       addLog(`⚠️ ${pendingAtStart} frames en attente de synchronisation`, 'warning');
+       if (isOnline) {
+         addLog('Synchronisation automatique dans 3 secondes...', 'info');
+         setTimeout(() => synchronizePendingFrames(), 3000);
+       }
+     }
+     
+   } catch (err) {
+     addLog(`Erreur initialisation: ${err.message}`, 'error');
+   }
+ })();
+ </script>
+ </body>
+ </html>

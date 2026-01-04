@@ -25,7 +25,7 @@
             background: white;
             border-radius: 25px;
             padding: 60px 50px;
-            max-width: 800px;
+            max-width: 1000px;
             width: 100%;
             box-shadow: 0 30px 90px rgba(0,0,0,0.4);
             animation: fadeIn 0.6s ease-out;
@@ -164,6 +164,11 @@
             color: white;
         }
 
+        .btn-reconstruct {
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+            color: white;
+        }
+
         .btn-icon {
             font-size: 2em;
         }
@@ -176,6 +181,141 @@
             font-size: 0.7em;
             opacity: 0.9;
             font-weight: normal;
+        }
+
+        /* Modal Reconstruction */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 30px;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255,107,107,0.4);
+        }
+
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .info-section {
@@ -215,6 +355,34 @@
             font-size: 1.2em;
         }
 
+        .success-message {
+            display: none;
+            padding: 20px;
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            color: #155724;
+            margin-top: 20px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .error-message {
+            display: none;
+            padding: 20px;
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            border-radius: 10px;
+            color: #721c24;
+            margin-top: 20px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 40px 30px;
@@ -230,6 +398,10 @@
 
             .features {
                 grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
             }
         }
     </style>
@@ -277,6 +449,11 @@
                 <span class="btn-title">Décodeur</span>
                 <span class="btn-subtitle">Vérifier l'Authenticité</span>
             </a>
+            <button class="btn btn-reconstruct" id="openReconstructModal">
+                <span class="btn-icon">🎬</span>
+                <span class="btn-title">Reconstruction</span>
+                <span class="btn-subtitle">Reconstruire une Vidéo depuis les Frames</span>
+            </button>
         </div>
 
         <div class="info-section">
@@ -285,10 +462,168 @@
                 <li><strong>Encodeur :</strong> Capture la vidéo, extrait les frames et génère des hashs cryptographiques uniques pour chaque image</li>
                 <li><strong>Stockage Cloud :</strong> Les frames et leurs hashs sont stockés de manière sécurisée sur Supabase</li>
                 <li><strong>Décodeur :</strong> Reconstruit la vidéo et vérifie l'intégrité en comparant les hashs</li>
+                <li><strong>Reconstruction :</strong> Régénère une vidéo certifiée à partir des frames stockées avec vérification d'authenticité</li>
                 <li><strong>Détection de Fraude :</strong> Toute modification d'une seule frame déclenche une alerte immédiate</li>
                 <li><strong>Preuve Légale :</strong> Certificat d'authenticité recevable en justice</li>
             </ul>
         </div>
     </div>
+
+    <!-- Modal Reconstruction -->
+    <div id="reconstructModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>🎬 Reconstruction de Vidéo</h2>
+            <p style="color: #666; margin-bottom: 25px;">
+                Reconstruisez une vidéo authentifiée à partir des frames stockées sur le serveur.
+            </p>
+
+            <form id="reconstructForm">
+                <div class="form-group">
+                    <label for="sessionId">Code de Session</label>
+                    <input 
+                        type="text" 
+                        id="sessionId" 
+                        placeholder="Ex: session_1767539454657"
+                        required
+                    >
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Le code de session obtenu lors de l'enregistrement
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="fps">Fréquence d'images (FPS)</label>
+                    <select id="fps">
+                        <option value="1">1 FPS (Lent)</option>
+                        <option value="2" selected>2 FPS (Normal)</option>
+                        <option value="5">5 FPS (Rapide)</option>
+                        <option value="10">10 FPS (Très rapide)</option>
+                        <option value="15">15 FPS (Fluide)</option>
+                        <option value="30">30 FPS (Maximum)</option>
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Plus le FPS est élevé, plus la vidéo sera fluide
+                    </small>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    🎬 Reconstruire et Télécharger
+                </button>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Téléchargement et reconstruction des frames en cours...</p>
+                <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                    Cette opération peut prendre plusieurs secondes
+                </p>
+            </div>
+
+            <div id="successMessage" class="success-message">
+                <strong>✅ Succès !</strong><br>
+                La vidéo authentifiée a été téléchargée avec succès.
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        const modal = document.getElementById('reconstructModal');
+        const openModalBtn = document.getElementById('openReconstructModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const reconstructForm = document.getElementById('reconstructForm');
+        const loading = document.getElementById('loading');
+        const submitBtn = document.getElementById('submitBtn');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Ouvrir le modal
+        openModalBtn.addEventListener('click', () => {
+            modal.classList.add('show');
+            // Reset form
+            reconstructForm.reset();
+            loading.classList.remove('show');
+            successMessage.classList.remove('show');
+            errorMessage.classList.remove('show');
+        });
+
+        // Fermer le modal
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+
+        // Fermer si clic en dehors
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+            }
+        });
+
+        // Soumettre le formulaire
+        reconstructForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sessionId = document.getElementById('sessionId').value.trim();
+            const fps = parseInt(document.getElementById('fps').value);
+
+            // Reset messages
+            successMessage.classList.remove('show');
+            errorMessage.classList.remove('show');
+            
+            // Afficher le loading
+            loading.classList.add('show');
+            submitBtn.disabled = true;
+
+            try {
+                console.log('🎬 Début reconstruction:', { sessionId, fps });
+
+                const response = await fetch(`${API_URL}/reconstruct-video`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sessionId, fps })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Erreur de reconstruction');
+                }
+
+                // Télécharger le fichier vidéo
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `verified_${sessionId}_${fps}fps.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                console.log('✅ Vidéo téléchargée avec succès');
+
+                // Afficher le message de succès
+                successMessage.classList.add('show');
+
+                // Reset le formulaire après 3 secondes
+                setTimeout(() => {
+                    reconstructForm.reset();
+                    successMessage.classList.remove('show');
+                }, 3000);
+
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+                errorMessage.textContent = `❌ Erreur: ${error.message}`;
+                errorMessage.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
